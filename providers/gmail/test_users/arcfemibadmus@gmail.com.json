@@ -1,0 +1,9 @@
+{
+    "token": "ya29.a0AVvZVsqRzjbgBjL20X4O9eTZbHq95nAsmXOzmrBkyd3eGK0VBNju3i-3vRrNJqPCfF8lCwPXLPFAtCU1cq9NZh_538dF4dqUrrNT-b4QRAqMK-Wu0O_vjYclGrnV_tvGd4EW8jqwm2cV-bwBgpkkB5F7H0KPaCgYKAbgSARASFQGbdwaIpWjCvqL8xi4DcdjxwGTDxA0163",
+    "refresh_token": "1//03DTumA8aarxOCgYIARAAGAMSNwF-L9IrU0y_pW9Q-Nwf27YZxS6UD7y5nfwL7YJWiMvIfFOFZ3D63w22x_ACrMMwhm5raX-3tDw",
+    "token_uri": "https://oauth2.googleapis.com/token",
+    "client_id": "812817234995-bqa303id48vi1eirevinkhdf8d4u4p2d.apps.googleusercontent.com",
+    "client_secret": "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",
+    "scopes": ["https://www.googleapis.com/auth/gmail.readonly"],
+    "expiry": "2023-03-15T13:03:57.328545Z"
+}

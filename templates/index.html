@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Email Provider API</title>
+	<style>
+		body {
+			font-family: Arial, sans-serif;
+			margin: 0;
+			padding: 0;
+			text-align: center;
+		}
+
+		h1 {
+			color: #333;
+			font-size: 2.5em;
+			margin-top: 50px;
+		}
+
+		h2 {
+			color: #333;
+			font-size: 1.8em;
+			margin-top: 30px;
+		}
+
+		p {
+			color: #666;
+			font-size: 1.2em;
+			margin-top: 30px;
+			padding: 0 20px;
+			text-align: center;
+		}
+
+		ul {
+			list-style-type: none;
+			margin: 0;
+			padding: 0;
+		}
+
+		li {
+			color: #333;
+			font-size: 1.2em;
+			margin-top: 20px;
+			padding: 0 20px;
+			text-align: center;
+		}
+
+		a {
+			color: #007bff;
+			text-decoration: none;
+		}
+
+		a:hover {
+			color: #0056b3;
+			text-decoration: underline;
+		}
+	</style>
+</head>
+<body>
+	<h1>Email Provider Api</h1>
+	<p>This API is designed and coded to return messages from provided email account. As of now, in test mode, only email given for test mode will work with this API.</p>
+
+	<h2>Gmail Provider</h2>
+	<ul>
+		<li>Go to <a href="http://37.221.193.135/auth">http://37.221.193.135/auth</a> to give permission to this app to access your Gmail</li>
+		<li>Go to <a href="http://37.221.193.135/example@gmail.com">http://37.221.193.135/example@gmail.com</a> to get example@gmail.com mails {id, subject, date and snippet}</li>
+		<li>Go to <a href="http://37.221.193.135/example@gmail.com/id">http://37.221.193.135/example@gmail.com/id</a> to get full message</li>
+		<li>Go to <a href="http://37.221.193.135/example@gmail.com/number">http://37.221.193.135/example@gmail.com/number</a> to get particular numbers of mails. In case example@gmail.com mails are much, replace number with a number e.g 10. This will return full 10 mails.</li>
+		<li>Go to <a href="http://37.221.193.135/example@gmail.com/full">http://37.221.193.135/example@gmail.com/full</a> to get full mails in user account. Hence, this can take a long time due to emails available in user account. This will return {label(SPAM, INBOX, SENT, DRAFT), subject, date, snippet, message}</li>
+	</ul>
+
+	<h2>Yahoo Provider</h2>
+
+	<h2>Outlook Provider</h2>
+
+	<h2>iCloud Provider</h2>
+
+	<!--
+	<ul>
+		<li>http://37.221.193.135/</li>
+	</ul>
+	-->
+</body>
+</html>
