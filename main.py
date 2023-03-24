@@ -1,6 +1,7 @@
 import os
 from flask import Flask, render_template, request
-from providers.gmail.api import auth, auth_callback, getMail, getMails, create_file
+from providers.gmail.api import auth, auth_callback, getMail, getMails
+from providers.outlook.api import o_auth, o_auth_callback, o_getMail, o_getMails
 app = Flask(__name__)
 os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '0'
 app.config['SECRET_KEY'] = 'django-insecure-^lcm&1+@pm&7q4i-tq0i^yrvgtlg1gxjbrq)o13al%+m^5c3b%'
@@ -41,7 +42,36 @@ def getmail(email):
 # =================================================== #
 
 
+# ===================================================== #
+#                      OUTLOOK API START                #
+# ===================================================== #
+
+@app.route('/outlook')
+def o_auth_user():
+    return o_auth()
+
+@app.route('/outlook/redirect/')
+def o_callback():
+    return o_auth_callback()
+
+@app.route('/outlook/<email>')
+def o_getmail(email):
+    return o_getMails(email, length='10')
+
+@app.route('/outlook/<email>/<length>')
+def o_getmails(email, length):
+    if length.isdigit():
+        return o_getMails(email, length)
+    else:
+        id = length
+        return o_getMail(email, id)
+
+# ===================================================== #
+#                       OUTLOOK API end                 #
+# ===================================================== #
+
+
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8000)
+    app.run(host='0.0.0.0', debug=True, port=8000)
