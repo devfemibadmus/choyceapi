@@ -16,7 +16,7 @@ GRAPH_URL = 'https://graph.microsoft.com/v1.0'
 ME_URL = GRAPH_URL + '/me'
 MESSAGES_URL = 'https://graph.microsoft.com/v1.0/me/mailfolders/inbox/messages'
 
-REDIRECT_URI = 'http://localhost:8000/outlook/redirect'
+REDIRECT_URI = 'http://37.221.193.135:8000/outlook/redirect'
 
 # Initialize the Azure AD app credentials
 credential = ClientSecretCredential(TENANT_ID, CLIENT_ID, CLIENT_SECRET)

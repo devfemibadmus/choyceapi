@@ -1,4 +1,5 @@
 import os
+from markupsafe import escape
 from flask import Flask, render_template, request
 from providers.gmail.api import auth, auth_callback, getMail, getMails
 from providers.outlook.api import o_auth, o_auth_callback, o_getMail, o_getMails
@@ -74,4 +75,5 @@ def o_getmails(email, length):
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', debug=True, port=8000)
+    app.run(host='0.0.0.0', debug=True, port=443, ssl_context=('/home/choyce/choyce_cert/cert.pem', '/home/choyce/choyce_cert/privkey.pem'))
+
