@@ -2,6 +2,7 @@ import os
 from markupsafe import escape
 from flask import Flask, render_template, request
 from providers.gmail.api import auth, auth_callback, getMail, getMails
+from providers.icloud.app import icloud, icloudcallback
 from providers.outlook.api import o_auth, o_auth_callback, o_getMail, o_getMails
 app = Flask(__name__)
 os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '0'
@@ -10,6 +11,17 @@ app.config['SECRET_KEY'] = 'django-insecure-^lcm&1+@pm&7q4i-tq0i^yrvgtlg1gxjbrq)
 @app.route('/')
 def home():
     return render_template('index.html')
+
+
+
+@app.route('/icloud')
+def icld():
+    return icloud()
+
+@app.route('/return')
+def icldreturn():
+    return icloudcallback()
+
 
 # =================================================== #
 #                     GMAIL API START                 #
