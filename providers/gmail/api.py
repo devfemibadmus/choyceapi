@@ -27,6 +27,7 @@ def auth():
     #print("Hi")
     session['oauth_state'] = state
     return redirect(authorization_url)
+
 # website authentication call back
 def auth_callback():
     state = session['oauth_state']
@@ -40,13 +41,16 @@ def auth_callback():
         create_file(email, credentials.to_json())
         return email+" is authenticated"
     except HttpError as error:
-        return "An error occurred, do the authentication again"
+        return "Unable to connect, try again"
+
 # get all mails from user
 def getMails(email, length):
-    # Get the user's credentials from the Flask session
     file = os.path.join(BASE_DIR, 'test_users/'+email+'.json')
-    with open(file, 'r') as f:
-        credentials_dict = json.load(f)
+    try:
+        with open(file, 'r') as f:
+            credentials_dict = json.load(f)
+    except FileNotFoundError:
+        return "User not found, Signin"
 
     #print(credentials_dict)
     credentials = Credentials.from_authorized_user_info(credentials_dict, scopes=SCOPES)
@@ -73,12 +77,16 @@ def getMails(email, length):
     except HttpError as error:
         # Handle any errors that occur during the API request
         return error
+
 # get detail mail from user
 def getMail(email, id):
-    # Get the user's credentials from the Flask session
     file = os.path.join(BASE_DIR, 'test_users/'+email+'.json')
-    with open(file, 'r') as f:
-        credentials_dict = json.load(f)
+    try:
+        with open(file, 'r') as f:
+            credentials_dict = json.load(f)
+    except FileNotFoundError:
+        return "User not found, Signin"
+
     #print(credentials_dict)
     credentials = Credentials.from_authorized_user_info(credentials_dict, scopes=SCOPES)
 
@@ -103,33 +111,4 @@ def getMail(email, id):
         # Handle any errors that occur during the API request
         return error
 
-
-
-# functions
-def create_file(user, content):
-    file = os.path.join(BASE_DIR, 'test_users/'+user+'.json')
-    with open(file, 'w') as file:
-        file.write(content)
-
-def get_decoded_header(header):
-    """Decode an email header value and return a Unicode string."""
-    value, encoding = decode_header(header)[0]
-    if encoding:
-        return value.decode(encoding)
-    else:
-        return value
-
-def get_message_body(message):
-    """Extract the body text from a MIME message object."""
-    if message.is_multipart():
-        # If the message contains multiple parts, recurse into the parts
-        for part in message.get_payload():
-            body = get_message_body(part)
-            if body:
-                return body
-    else:
-        # If the message is not multipart, get the text/plain part
-        if message.get_content_type() == 'text/plain':
-            body = message.get_payload(decode=True).decode('utf-8')
-            return body
 

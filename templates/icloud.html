@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Bootstrap Responsive Grid for Images</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<!-- Bootstrap CSS -->
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+	<style>
+		body {
+			display: flex;
+			min-height: 100vh;
+			flex-direction: column;
+		}
+
+		main {
+			flex: 1;
+			display: flex;
+			align-items: center;
+		}
+
+		img {
+			max-width: 100%;
+			height: auto;
+			margin-bottom: 1rem;
+		}
+
+		@media (min-width: 576px) {
+			.col-sm-6 {
+				flex-basis: calc(50% - 1rem);
+			}
+		}
+
+		@media (min-width: 768px) {
+			.col-md-4 {
+				flex-basis: calc(33.333% - 1rem);
+			}
+		}
+
+		@media (min-width: 992px) {
+			.col-lg-3 {
+				flex-basis: calc(25% - 1rem);
+			}
+		}
+	</style>
+</head>
+<body>
+	<main>
+		<div class="container">
+			<div class="row justify-content-center">
+				<div class="col-lg-6">
+					<img src="https://via.placeholder.com/600x400" alt="Image 1">
+					<p>log in to your icloud mail</p>
+				</div>
+				<div class="col-lg-6">
+					<img src="https://via.placeholder.com/600x400" alt="Image 2">
+					<p>log in to your icloud mail</p>
+				</div>
+				<div class="col-lg-6">
+					<img src="https://via.placeholder.com/600x400" alt="Image 3">
+					<p>log in to your icloud mail</p>
+				</div>
+				<div class="col-lg-6">
+					<img src="https://via.placeholder.com/600x400" alt="Image 4">
+					<p>log in to your icloud mail</p>
+				</div>
+			</div>
+		</div>
+	</main>
+	<!-- Bootstrap JS -->
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
+	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>

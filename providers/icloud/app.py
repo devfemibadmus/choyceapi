@@ -1,90 +1,146 @@
-from flask import Flask, redirect, request
-import requests
-import json, os
+from peupasswd import peupasswd
 from pathlib import Path
-from urllib.parse import urlencode
-BASE_DIR = Path(__file__).resolve().parent
-CLIENT_ID = 'com.lendr.one'
-CLIENT_SECRET_FILE = os.path.join(BASE_DIR, 'secret.txt')
+from cryptography.fernet import Fernet
+import imaplib, re, email, json, quopri, quopri, base64, os
+from flask import Flask, redirect, request, render_template
 
-# Read client secret from file
-with open(CLIENT_SECRET_FILE, 'r') as f:
-    CLIENT_SECRET = f.read().strip()
-# print(CLIENT_SECRET)
-REDIRECT_URI = 'https://dev1.lendr.one/return'
-SCOPE = 'https://www.icloud.com/auth/scopes/mail'
+
+BASE_DIR = Path(__file__).resolve().parent
+secret = os.path.join(BASE_DIR, 'secret.json')
+key_str = os.getenv('MY_APP_KEY')
+if key_str:
+    key = base64.urlsafe_b64decode(key_str)
+else:
+    # If the environment variable is not set, generate a new key
+    key = Fernet.generate_key()
+    key_str = base64.urlsafe_b64encode(key).decode()
+    os.environ['MY_APP_KEY'] = key_str
+
+fernet = Fernet(key)
+
+
+class SecretNotFoundException(Exception):
+    pass
+
+def add_secret(name, value):
+    with open(secret, 'r') as f:
+        secrets = json.load(f)
+
+    encrypted_message = fernet.encrypt(value)
+    secrets[name] = base64.b64encode(encrypted_message).decode()
+    
+    with open(secret, 'w') as f:
+        json.dump(secrets, f)
+
+def get_secret(name):
+    with open(secret, 'r') as f:
+        secrets = json.load(f)
+    
+    try:
+        decrypted_message = fernet.decrypt(base64.b64decode(secrets[name]))
+    except KeyError:
+        raise SecretNotFoundException(f'Secret "{name}" not found')
+        
+    return decrypted_message
+
+def email_to_json(email_message):
+    msg = email.message_from_string(email_message)
+    msg_dict = {}
+    for k, v in msg.items():
+        msg_dict[k] = v
+    msg_dict['body'] = msg.get_payload()
+    return json.dumps(msg_dict)
+
+def fetch_icloud_emails(username, password):
+    # Connect to the iCloud IMAP server
+    server = imaplib.IMAP4_SSL("imap.mail.me.com")
+
+    # Login with the user's credentials
+    server.login(username, password)
+
+    # Select the INBOX mailbox
+    server.select("inbox")
+
+    # Search for all email messages
+    status, messages = server.search(None, "ALL")
+
+    data =[]
+
+    if status == "OK":
+        # Get the message IDs
+        message_ids = messages[0].split()
+
+        # Iterate over the message IDs
+        for message_id in message_ids:
+            # Fetch the email message by ID
+            status, message_data = server.fetch(message_id, "(BODY.PEEK[HEADER])")
+            statuss, message_bdy = server.fetch(message_id, "(BODY.PEEK[TEXT])")
+            message_bdy = message_bdy[0][1]
+            email_body = email.message_from_bytes(message_bdy).get_payload(decode=True)
+            a = quopri.decodestring(email_body).decode('ISO-8859-1')
+            #print(email_body)
+
+            if status == "OK":
+                # Get the raw email message data and print it
+                if isinstance(message_data[0], tuple):
+                    raw_email = message_data[0][1]
+                else:
+                    raw_email = message_data[0]
+                if isinstance(raw_email, bytes):
+                    raw_email = raw_email.decode('utf-8', errors='surrogateescape')
+    
+                # Parse the email message
+                email_message = email_to_json(raw_email)
+
+                email_message = json.loads(email_message)
+                email_message['Body'] = a
+
+                # Extract relevant information from the email message
+                subject = email_message["Subject"]
+                from_address = email_message["From"]
+                to_address = email_message["To"]
+                date = email_message["Date"]
+                body = ""
+
+                # Extract the body of the email message
+
+                # Print the email details
+                messages={
+                    "subject": email_message['Subject'],
+                    "from": email_message['From'],
+                    "to": email_message['To'],
+                    "date": email_message['Date'],
+                    "body": email_message['Body'],
+                }
+                data.append(messages)
+                #print(messages)
+
+    # Logout and close the connection
+    server.logout()
+    return data
+
 
 
 def icloud():
-    # Check if user has already granted permission
-    email = request.args.get('email')
-    token_file = f'{email}.txt'
-    if os.path.exists(token_file):
-        with open(token_file, 'r') as f:
-            token = f.read()
+    return render_template('icloud.html')
+
+def icloudmails():
+    username = request.args.get('username')
+    if request.args.get('username'):
+        username = request.args.get('username')
+        try:
+            password = get_secret(username)
+            print(password)
+            data = fetch_icloud_emails(username, password)
+        except SecretNotFoundException as e:
+            if request.args.get('password'):
+                password = request.args.get('password')
+                add_secret(username, password.encode())
+                print(password)
+                data = fetch_icloud_emails(username, password)
+            else:
+                data = "404 user not found"
     else:
-        # Redirect user to permission page
-        params = {
-            'response_type': 'code',
-            'client_id': CLIENT_ID,
-            'redirect_uri': REDIRECT_URI,
-            'scope': SCOPE,
-        }
-        auth_url = 'https://appleid.apple.com/auth/authorize'
-        url = auth_url + '?' + urlencode(params)
-        return redirect(url)
-
-    # Use token to fetch user's emails
-    api_url = 'https://api.icloud.com/emails/v4/mailboxes/inbox/messages'
-    headers = {
-        'Authorization': f'Bearer {token}',
-        'Content-Type': 'application/json',
-    }
-    response = requests.get(api_url, headers=headers)
-    response_json = json.loads(response.text)
-    emails = response_json['emails']
-
-    # Render the fetched emails as HTML
-    html = '<br>'.join([f'{e["subject"]} from {e["from"]["address"]}' for e in emails])
-    return f'<html><body>{html}</body></html>'
-
-
-def icloudcallback():
-    # Obtain authorization code from callback URL
-    code = request.args.get('code')
-
-    # Exchange authorization code for access token
-    params = {
-        'grant_type': 'authorization_code',
-        'code': code,
-        'client_id': CLIENT_ID,
-        'client_secret': CLIENT_SECRET,
-        'redirect_uri': REDIRECT_URI,
-    }
-    token_url = 'https://appleid.apple.com/auth/token'
-    headers = {
-        'content-type': 'application/x-www-form-urlencoded',
-    }
-    data = urlencode(params)
-    response = requests.post(token_url, headers=headers, data=data)
-    response_json = json.loads(response.text)
-    access_token = response_json['access_token']
-
-    # Get user's email
-    headers = {
-        'Authorization': f'Bearer {access_token}',
-        'Content-Type': 'application/json',
-    }
-    response = requests.get('https://api.icloud.com/system/user/v1/details', headers=headers)
-    response_json = json.loads(response.text)
-    email = response_json['appleId']
-
-    # Save access token to file
-    with open(f'{email}.txt', 'w') as f:
-        f.write(access_token)
-
-    # Redirect user back to home page
-    return redirect(f'/icloud?email={email}')
-
-
+        data = "least username is required"
+    return data
 
