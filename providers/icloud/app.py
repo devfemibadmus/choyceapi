@@ -4,20 +4,11 @@ from cryptography.fernet import Fernet
 import imaplib, re, email, json, quopri, quopri, base64, os
 from flask import Flask, redirect, request, render_template
 
-
 BASE_DIR = Path(__file__).resolve().parent
 secret = os.path.join(BASE_DIR, 'secret.json')
-key_str = os.getenv('MY_APP_KEY')
-if key_str:
-    key = base64.urlsafe_b64decode(key_str)
-else:
-    # If the environment variable is not set, generate a new key
-    key = Fernet.generate_key()
-    key_str = base64.urlsafe_b64encode(key).decode()
-    os.environ['MY_APP_KEY'] = key_str
+key = b'JHSVzLOcT9cdhIjZ0uWDNgfkOjnX7ELH6_us19Uszbo='
 
 fernet = Fernet(key)
-
 
 class SecretNotFoundException(Exception):
     pass
@@ -25,9 +16,9 @@ class SecretNotFoundException(Exception):
 def add_secret(name, value):
     with open(secret, 'r') as f:
         secrets = json.load(f)
-
+    
     encrypted_message = fernet.encrypt(value)
-    secrets[name] = base64.b64encode(encrypted_message).decode()
+    secrets[name] = base64.urlsafe_b64encode(encrypted_message).decode()
     
     with open(secret, 'w') as f:
         json.dump(secrets, f)
@@ -37,7 +28,8 @@ def get_secret(name):
         secrets = json.load(f)
     
     try:
-        decrypted_message = fernet.decrypt(base64.b64decode(secrets[name]))
+        encrypted_message = base64.urlsafe_b64decode(secrets[name])
+        decrypted_message = fernet.decrypt(encrypted_message).decode()  # Decode the decrypted bytes to string
     except KeyError:
         raise SecretNotFoundException(f'Secret "{name}" not found')
         
