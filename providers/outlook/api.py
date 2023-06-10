@@ -33,6 +33,7 @@ def create_file(user, content):
     file = os.path.join(BASE_DIR, 'test_users/'+user+'.json')
     with open(file, 'w') as file:
         file.write(content)
+        
 # refresh token
 def refresh_token(email):
     with open(os.path.join(BASE_DIR, 'test_users/'+email+'.json'), 'r') as f:

@@ -1,39 +1,41 @@
 from peupasswd import peupasswd
 from pathlib import Path
-from cryptography.fernet import Fernet
 import imaplib, re, email, json, quopri, quopri, base64, os
 from flask import Flask, redirect, request, render_template
+from main import get_db, app
 
 BASE_DIR = Path(__file__).resolve().parent
 secret = os.path.join(BASE_DIR, 'secret.json')
-key = b'JHSVzLOcT9cdhIjZ0uWDNgfkOjnX7ELH6_us19Uszbo='
-
-fernet = Fernet(key)
 
 class SecretNotFoundException(Exception):
     pass
 
+
 def add_secret(name, value):
-    with open(secret, 'r') as f:
-        secrets = json.load(f)
-    
-    encrypted_message = fernet.encrypt(value)
-    secrets[name] = base64.urlsafe_b64encode(encrypted_message).decode()
-    
-    with open(secret, 'w') as f:
-        json.dump(secrets, f)
+    db = get_db()
+
+    insert_query = '''
+        INSERT OR REPLACE INTO providers (type, user, value)
+        VALUES (?, ?, ?)
+    '''
+    db.execute(insert_query, ('icloud', name, value))
+    db.commit()
 
 def get_secret(name):
-    with open(secret, 'r') as f:
-        secrets = json.load(f)
-    
-    try:
-        encrypted_message = base64.urlsafe_b64decode(secrets[name])
-        decrypted_message = fernet.decrypt(encrypted_message).decode()  # Decode the decrypted bytes to string
-    except KeyError:
+    db = get_db()
+
+    select_query = '''
+        SELECT value FROM providers
+        WHERE type = 'icloud' AND user = ?
+    '''
+    result = db.execute(select_query, (name,)).fetchone()
+
+    if result is None:
         raise SecretNotFoundException(f'Secret "{name}" not found')
-        
-    return decrypted_message
+
+    secret = result['value']
+    return secret
+
 
 def email_to_json(email_message):
     msg = email.message_from_string(email_message)
@@ -116,23 +118,17 @@ def fetch_icloud_emails(username, password):
 def icloud():
     return render_template('icloud.html')
 
-def icloudmails():
-    username = request.args.get('username')
-    if request.args.get('username'):
-        username = request.args.get('username')
-        try:
-            password = get_secret(username)
-            print(password)
+def icloudmails(email, app_pass=None):
+    username = email
+    try:
+        password = get_secret(username).decode()
+        data = fetch_icloud_emails(username, password)
+    except Exception as e:
+        if app_pass != None:
+            password = request.args.get('password')
+            add_secret(username, password.encode())
             data = fetch_icloud_emails(username, password)
-        except SecretNotFoundException as e:
-            if request.args.get('password'):
-                password = request.args.get('password')
-                add_secret(username, password.encode())
-                print(password)
-                data = fetch_icloud_emails(username, password)
-            else:
-                data = "404 user not found"
-    else:
-        data = "least username is required"
+        else:
+            data = "404 user not found"
     return data
 

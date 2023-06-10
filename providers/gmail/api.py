@@ -1,5 +1,6 @@
 import json, os, base64, re
 from pathlib import Path
+from main import get_db
 from bs4 import BeautifulSoup
 from email import message_from_bytes
 from email.header import decode_header
@@ -17,7 +18,38 @@ CLIENT_SECRETS_FILE = os.path.join(BASE_DIR, 'credential.json')
 SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
 API_SERVICE_NAME = 'gmail'
 API_VERSION = 'v1'
-REDIRECT_URI = 'http://localhost:8000/auth/callback/'
+REDIRECT_URI = 'http://localhost:8000/gmail/auth/callback/'
+
+
+class SecretNotFoundException(Exception):
+    pass
+
+def add_secret(name, value):
+    db = get_db()
+
+    insert_query = '''
+        INSERT OR REPLACE INTO providers (type, user, value)
+        VALUES (?, ?, ?)
+    '''
+    db.execute(insert_query, ('Gmail', name, value))
+    db.commit()
+
+def get_secret(name):
+    db = get_db()
+
+    select_query = '''
+        SELECT value FROM providers
+        WHERE type = 'Gmail' AND user = ?
+    '''
+    result = db.execute(select_query, (name,)).fetchone()
+
+    if result is None:
+        raise SecretNotFoundException(f'Secret "{name}" not found')
+
+    secret = result['value']
+    return json.loads(secret)
+
+
 
 # website authentication
 def auth():
@@ -26,10 +58,13 @@ def auth():
     #print(state)
     #print("Hi")
     session['oauth_state'] = state
+    #print(session['oauth_state'])
     return redirect(authorization_url)
 
 # website authentication call back
 def auth_callback():
+    #for key, value in session.items():
+        #print(key, value)
     state = session['oauth_state']
     flow = Flow.from_client_secrets_file(CLIENT_SECRETS_FILE, scopes=SCOPES, redirect_uri=REDIRECT_URI, state=state)
     flow.fetch_token(authorization_response=request.url)
@@ -38,18 +73,16 @@ def auth_callback():
         service = build('gmail', 'v1', credentials=credentials)
         profile = service.users().getProfile(userId='me').execute()
         email = profile['emailAddress']
-        create_file(email, credentials.to_json())
+        add_secret(email, credentials.to_json())
         return email+" is authenticated"
     except HttpError as error:
         return "Unable to connect, try again"
 
 # get all mails from user
 def getMails(email, length):
-    file = os.path.join(BASE_DIR, 'test_users/'+email+'.json')
     try:
-        with open(file, 'r') as f:
-            credentials_dict = json.load(f)
-    except FileNotFoundError:
+        credentials_dict = get_secret(email)
+    except SecretNotFoundException:
         return "User not found, Signin"
 
     #print(credentials_dict)
@@ -80,11 +113,9 @@ def getMails(email, length):
 
 # get detail mail from user
 def getMail(email, id):
-    file = os.path.join(BASE_DIR, 'test_users/'+email+'.json')
     try:
-        with open(file, 'r') as f:
-            credentials_dict = json.load(f)
-    except FileNotFoundError:
+        credentials_dict = get_secret(email)
+    except SecretNotFoundException:
         return "User not found, Signin"
 
     #print(credentials_dict)
