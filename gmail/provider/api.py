@@ -24,15 +24,27 @@ REDIRECT_URI = 'http://localhost/gmail/auth/callback/'
 class SecretNotFoundException(Exception):
     pass
 
-def add_secret(name, value):
+def add_secret(user, value):
     db = get_db()
 
-    insert_query = '''
-        INSERT OR REPLACE INTO providers (type, user, value)
-        VALUES (?, ?, ?)
+    select_query = '''
+        SELECT * FROM providers WHERE type = 'Gmail' AND user = ?
     '''
-    db.execute(insert_query, ('Gmail', name, value))
+    row = db.execute(select_query, (user,)).fetchone()
+
+    if row is None:
+        insert_query = '''
+            INSERT INTO providers (type, user, value) VALUES (?, ?, ?)
+        '''
+        db.execute(insert_query, ('Gmail', user, value))
+    else:
+        update_query = '''
+            UPDATE providers SET value = ? WHERE type = 'Gmail' AND user = ?
+        '''
+        db.execute(update_query, (value, user))
+    
     db.commit()
+
 
 def get_secret(name):
     db = get_db()

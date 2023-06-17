@@ -12,14 +12,25 @@ class SecretNotFoundException(Exception):
     pass
 
 
-def add_secret(name, value):
+def add_secret(user, value):
     db = get_db()
 
-    insert_query = '''
-        INSERT OR REPLACE INTO providers (type, user, value)
-        VALUES (?, ?, ?)
+    select_query = '''
+        SELECT * FROM providers WHERE type = 'icloud' AND user = ?
     '''
-    db.execute(insert_query, ('icloud', name, value))
+    row = db.execute(select_query, (user,)).fetchone()
+
+    if row is None:
+        insert_query = '''
+            INSERT INTO providers (type, user, value) VALUES (?, ?, ?)
+        '''
+        db.execute(insert_query, ('icloud', user, value))
+    else:
+        update_query = '''
+            UPDATE providers SET value = ? WHERE type = 'icloud' AND user = ?
+        '''
+        db.execute(update_query, (value, user))
+    
     db.commit()
 
 def get_secret(name):
@@ -54,6 +65,7 @@ def get_text_plain(email_message):
                 return part.get_content()
     else:
         return email_message.get_content()
+
 def fetch_icloud_emails(username, password):
     # Connect to the iCloud IMAP server
     server = imaplib.IMAP4_SSL("imap.mail.me.com")
