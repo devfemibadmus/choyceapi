@@ -1,6 +1,6 @@
 from azure.identity import ClientSecretCredential
 from msal import PublicClientApplication, ConfidentialClientApplication
-import requests, os, json, time, html
+import requests, os, json, time, html, msal
 from pathlib import Path
 from flask import Flask, request, redirect, session, url_for
 from bs4 import BeautifulSoup
@@ -19,6 +19,8 @@ MESSAGES_URL = 'https://graph.microsoft.com/v1.0/me/mailfolders/inbox/messages'
 
 REDIRECT_URI = 'http://localhost/outlook/redirect'
 
+SCOPE = ['https://graph.microsoft.com/Mail.Read', 'https://graph.microsoft.com/User.Read.All']
+
 # Initialize the Azure AD app credentials
 credential = ClientSecretCredential(TENANT_ID, CLIENT_ID, CLIENT_SECRET)
 
@@ -36,11 +38,22 @@ class SecretNotFoundException(Exception):
 def add_secret(user, value):
     db = get_db()
 
-    insert_query = '''
-        INSERT OR REPLACE INTO providers (type, user, value)
-        VALUES (?, ?, ?)
+    select_query = '''
+        SELECT * FROM providers WHERE type = 'outlook' AND user = ?
     '''
-    db.execute(insert_query, ('outlook', user, value))
+    row = db.execute(select_query, (user,)).fetchone()
+
+    if row is None:
+        insert_query = '''
+            INSERT INTO providers (type, user, value) VALUES (?, ?, ?)
+        '''
+        db.execute(insert_query, ('outlook', user, value))
+    else:
+        update_query = '''
+            UPDATE providers SET value = ? WHERE type = 'outlook' AND user = ?
+        '''
+        db.execute(update_query, (value, user))
+    
     db.commit()
 
 def get_secret(name):
@@ -58,32 +71,26 @@ def get_secret(name):
     secret = result['value']
     return secret
 
-        
 # refresh token
 def refresh_token(email):
     try:
-        refresh_token = get_secret(email)
-    except SecretNotFoundException as e:
+        print("asdfghjkl")
+        refresh_token = get_secret(email + "_refresh")  # get refresh token
+    except SecretNotFoundException:
         return "404 user not found, Signin"
-
-    response = requests.post(
-        'https://login.microsoftonline.com/common/oauth2/v2.0/token',
-        data={
-            'client_id': CLIENT_ID,
-            'client_secret': CLIENT_SECRET,
-            'grant_type': 'refresh_token',
-            'refresh_token': refresh_token,
-            'scope': 'https://graph.microsoft.com/Mail.Read'
-        }
+    
+    result = msal_app.acquire_token_by_refresh_token(
+        refresh_token=refresh_token,
+        scopes=['https://graph.microsoft.com/Mail.Read', 'https://graph.microsoft.com/User.Read.All'],
     )
-    print(refresh_token)
-    print(response.json())
-    access_token = response.json()['access_token']
-    add_secret(email, access_token)
+    if "access_token" in result:
+        access_token = result["access_token"]
+        add_secret(email + "_access", access_token)  # store new access token
+        return access_token
+    else:
+        print(result.get("error"))
 
-    return access_token
-
-
+    return None
 
 # Function to initiate user authentication
 def o_auth():
@@ -102,14 +109,20 @@ def o_auth_callback():
         scopes=['https://graph.microsoft.com/Mail.Read', 'https://graph.microsoft.com/User.Read.All'],
         redirect_uri=REDIRECT_URI
     )
-    add_secret(result['id_token_claims']['preferred_username'], result['access_token'])
+    username = result['id_token_claims']['preferred_username']
+    access_token = result['access_token']
+    refresh_token = result['refresh_token']  # get refresh token from the result
 
-    return redirect("/outlook/"+result['id_token_claims']['preferred_username'])
+    add_secret(username + "_access", access_token)  # store access token
+    add_secret(username + "_refresh", refresh_token)  # store refresh token
+
+    return redirect("/outlook/"+username)
+
 
 # Function to fetch a mail using the authenticated access token
 def o_getMail(email, message_id):
     try:
-        access_token = get_secret(email)
+        access_token = get_secret(email + "_access")
     except SecretNotFoundException as e:
         return "404 user not found, Signin"
     response = requests.get(
@@ -142,7 +155,7 @@ def o_getMail(email, message_id):
 # Function to fetch messages using the authenticated access token
 def o_getMails(email, length):
     try:
-        access_token = get_secret(email)
+        access_token = get_secret(email + "_access")
     except SecretNotFoundException as e:
         return "404 user not found, Signin"
     response = requests.get(
@@ -153,8 +166,10 @@ def o_getMails(email, length):
         }
     )
     #print(response.status_code)
-    if response.status_code != 401:  # Access token expired
+    if response.status_code == 401:  # Access token expired
         access_token = refresh_token(email)
+        print(access_token)
+        print("access_token")
         response = requests.get(
             'https://graph.microsoft.com/v1.0/me/messages?$select=id,receivedDateTime,subject,sender,bodyPreview&$top='+length,
             headers={
@@ -162,6 +177,7 @@ def o_getMails(email, length):
                 'Accept': 'application/json'
             }
         )
+    print(response)
     messages = response.json()['value']
     result = []
     for message in messages:
