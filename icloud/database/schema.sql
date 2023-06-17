@@ -1,0 +1,6 @@
+CREATE TABLE IF NOT EXISTS providers (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    type TEXT NOT NULL,
+    user TEXT NOT NULL,
+    value TEXT NOT NULL
+);
